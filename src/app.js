@@ -4,8 +4,11 @@ import PaintCanvas from './PaintCanvas';
 import Message from './Message';
 import Panel from './Panel';
 import './app.css';
-// TODO 1.1: import socket.io-client
+import io from 'socket.io-client';
 // TODO 1.2: create a new socket connection by invoking "socket.io-client". Convention is to name the returned socket instance "socket".
+const socket = io();
+
+
 
 /**
  * Creates a layout panel in a specified position. Other components can use
@@ -42,10 +45,15 @@ const paintCanvas = new PaintCanvas({
   mountPoint: document.body,
   onMove({points, color}) {
     // TODO 1.3: emit a "DRAW_POINTS" message to the server when paintCanvas has mouseMove events
+    socket.emit('DRAW', {points, color});
   },
 });
 
 // TODO 1.4: listen for draw events from the server of the draw action-type (eg "DRAW_POINTS") and use the paintCanvas.drawLine(Array<{x: number, y: number}>, color: string) method to draw the points on the canvas.
+socket.on('DRAW', ({points, color}) => {
+  console.log("client");
+  paintCanvas.drawLine(points, color);
+})
 
 // create and render the color selector
 new ColorSelector({
@@ -70,8 +78,26 @@ setTimeout(() => {
   greet.write(`Hello, ${username}.`);
 });
 // TODO 2.1: Emit a login event (eg "LOGIN") to the server when the client is connected with the selected username.
+const login = (message = 'Enter your username') => {
+  username = prompt(message);
+  socket.emit('LOGIN', {username}, login);
+};
+socket.on('connect', () => {
+  login();
+  greet.write(`Hello, ${username}`);
+});
 // TODO 2.2: Prevent users from using an existing username (multiple ways to do this, the most elegant would be using an "acknowledgement" when you dispatch the login event)
 // TODO 2.3: Listen for an update user list event (eg "UPDATE_USER_LIST") from server, containing the "users" object with all usernames then update the dom to display this.
+
+const createUser = username => new Message({
+  text:username,
+  mountPoint: userPanel
+});
+socket.on('UPDATE_USER_LIST', ({users}) => {
+  userPanel.clear();
+  Object.keys(users).map(createUser);
+});
+
 
 // TODO 3.1 Update the user list display from step 2.3 so that it displays buttons, when clicked, draw events will only be dispatched to that user. You will also need to modify the onMove handler from 1.3
 // TODO 3.2 When a user is selected, filter draw events from other users and only display events from the selected user. You will likely need to update the "DRAW_POINTS" listener from 1.4
